@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Color Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/tracking/build/tracking.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tracking/build/data/face-min.js"></script>
+</head>
+<body>
+  <h1>Color Tracker</h1>
+  <p>Open the website you want to track in a new tab.</p>
+  <button id="startButton" disabled>Start Tracking</button>
+  <p id="status">Waiting for tracking to start...</p>
+
+  <script>
+    // Desired color to track (RGB: 214.42.32)
+    const desiredColor = [214, 42, 32];
+
+    // Initialize tracker
+    const tracker = new tracking.ColorTracker(desiredColor);
+
+    // Enable tracking when the tracker is ready
+    tracker.on('track', event => {
+      if (event.data.length === 0) {
+        document.getElementById('status').textContent = 'Tracking... (no color found)';
+      } else {
+        document.getElementById('status').textContent = 'Tracking... (color found)';
+        simulateLeftMouseClick();
+      }
+    });
+
+    // Start tracking when the button is clicked
+    document.getElementById('startButton').addEventListener('click', () => {
+      tracker.run();
+      document.getElementById('status').textContent = 'Tracking...';
+    });
+
+    // Simulate a left mouse button click
+    function simulateLeftMouseClick() {
+      const event = new MouseEvent('click', {
+        button: 0, // 0 is left button
+        buttons: 1, // 1 is left button
+        view: window,
+      });
+
+      document.dispatchEvent(event);
+    }
+
+    // Enable the start button when the tracker is ready
+    tracking.ColorTracker.registerColor('custom', (r, g, b) => {
+      return (
+        r >= desiredColor[0] - 10 &&
+        r <= desiredColor[0] + 10 &&
+        g >= desiredColor[1] - 10 &&
+        g <= desiredColor[1] + 10 &&
+        b >= desiredColor[2] - 10 &&
+        b <= desiredColor[2] + 10
+      );
+    });
+    tracking.ColorTracker.prototype.custom = function(pixels, width, height) {
+      const result = new tracking.ColorTracker.Result();
+      result.data = pixels;
+      result.width = width;
+      result.height = height;
+      return result;
+    };
+    tracking.ColorTracker.prototype.trackColor_ = function(r, g, b, a, x, y) {
+      const threshold = this.threshold;
+      const thresholdSensitivity = this.thresholdSensitivity;
+      const region = this.region;
+      const intensity = this.getIntensityValue_(r, g, b);
+      if (!region) {
+        throw new Error('trackColorData requires region to be set.');
+      }
+      if (
+        !region.contains(x, y) 
+        intensity < threshold.min 
+        intensity > threshold.max 
+        (r !== this.customColor[0]  g !== this.customColor[1] || b !== this.customColor[2])
+      ) {
+        return;
+      }
+      const data = this.custom(r, g, b, a, x, y);
+      this.emit('track', {
+        data,
+        width: region.width,
+        height: region.height,
+        x: region.x,
+        y: region.y,
+        total: region.width * region.height,
+      });
+    };
+
+    // Enable the start button
+    document.getElementById('startButton').disabled = false;
+  </script>
+</body>
+</html>
+
